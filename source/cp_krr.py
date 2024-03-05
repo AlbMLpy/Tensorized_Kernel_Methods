@@ -1,9 +1,9 @@
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
-from .matrix_operations import khatri_rao_row
 
-FeatureMap = Callable[[np.array], np.array]
+from .features import FeatureMap
+from .matrix_operations import khatri_rao_row
 
 def cp_krr(
     x: np.array, 
