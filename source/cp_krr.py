@@ -40,6 +40,7 @@ def cp_krr(
     _, d_dim = x.shape
     random_state = np.random if seed is None else np.random.RandomState(seed)
     weights = random_state.randn(d_dim, feature_dim, rank)
+    weights /= np.linalg.norm(weights, ord=2, axis=(1, 2), keepdims=True)
 
     # Preprocessing: Calculate full features-parameters multiplication: 
     hadamard_feat_param = 1.0
