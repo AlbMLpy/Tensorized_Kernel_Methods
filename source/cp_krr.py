@@ -29,7 +29,7 @@ def init_weights(
 def cp_krr(
     x: np.array, 
     y: np.array,
-    feature_dim: int,
+    m_order: int,
     feature_map: FeatureMap,
     rank: int,
     init_type: str,
@@ -54,11 +54,11 @@ def cp_krr(
     Returns
     -------
     output : numpy.ndarray[:, :, :]
-        Weights tensor: n_in_features by feature_dim by cp-rank
+        Weights tensor: n_in_features by m_order by cp-rank
         
     """
     _, d_dim = x.shape
-    weights = init_weights(feature_dim, rank, d_dim, init_type, seed=seed)
+    weights = init_weights(m_order, rank, d_dim, init_type, seed=seed)
     # Preprocessing: Calculate full features-parameters multiplication: 
     hadamard_feat_param = 1.0
     hadamard_gram = 1.0
@@ -77,8 +77,8 @@ def cp_krr(
             # Calculate A, b and solve linear system:
             Fk = khatri_rao_row(fk_mtx, hadamard_feat_param)
             b = Fk.T.dot(y)
-            A = Fk.T.dot(Fk) + reg_value * np.kron(hadamard_gram, np.eye(feature_dim))
-            wk = weights[k] = np.linalg.solve(A, b).reshape(feature_dim, rank)
+            A = Fk.T.dot(Fk) + reg_value * np.kron(hadamard_gram, np.eye(m_order))
+            wk = weights[k] = np.linalg.solve(A, b).reshape(m_order, rank)
             # Postprocess:
             hadamard_feat_param *= fk_mtx.dot(wk)
             hadamard_gram *= wk.T.dot(wk)

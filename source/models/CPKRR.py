@@ -17,7 +17,7 @@ class CPKRR(BaseEstimator, RegressorMixin):
         self, 
         rank: int = 1, 
         feature_map: FeatureMap = DEFAULT_FM, 
-        feature_dim: int = DEFAULT_FD,
+        m_order: int = DEFAULT_FD,
         init_type: str = 'k_mtx',
         n_epoch: int = 1, 
         alpha: int = 1, 
@@ -25,7 +25,7 @@ class CPKRR(BaseEstimator, RegressorMixin):
     ):
         self.rank = rank
         self.feature_map = feature_map
-        self.feature_dim = feature_dim
+        self.m_order = m_order
         self.init_type = init_type
         self.n_epoch = n_epoch
         self.alpha = alpha
@@ -35,7 +35,7 @@ class CPKRR(BaseEstimator, RegressorMixin):
         """ TODO """
         X, y = check_X_y(X, y)
         self.weights_ = cp_krr(
-            X, y, self.feature_dim, self.feature_map, 
+            X, y, self.m_order, self.feature_map, 
             self.rank, self.init_type, self.n_epoch, self.alpha, self.random_state
         )
         self.is_fitted_ = True
