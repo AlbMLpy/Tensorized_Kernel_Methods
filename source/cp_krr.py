@@ -5,12 +5,34 @@ import numpy as np
 from .features import FeatureMap
 from .matrix_operations import khatri_rao_row
 
+def init_weights(
+    m_order: int, 
+    rank: int, 
+    d_dim: int, 
+    init_type: str = 'k_mtx', 
+    seed: Optional[int] = None
+) -> np.array:
+    """ 
+    Random initialization of model parameters. 
+    TODO
+    """
+    random_state = np.random if seed is None else np.random.RandomState(seed) 
+    weights = random_state.randn(d_dim, m_order, rank)
+    if init_type == 'k_mtx': # Matrix weights[k][:, :] is normalized
+        weights /= np.linalg.norm(weights, ord=2, axis=(1, 2), keepdims=True)
+    elif init_type == 'kj_vec': # Vector weights[k][:][j] is normalized
+        weights /= np.linalg.norm(weights, ord=2, axis=1, keepdims=True)
+    else:
+        raise ValueError(f'Bad init_type = {init_type}. See docs.')
+    return weights
+
 def cp_krr(
     x: np.array, 
     y: np.array,
     feature_dim: int,
     feature_map: FeatureMap,
     rank: int,
+    init_type: str,
     n_epoch: int,
     reg_value: float,
     seed: Optional[int] = None
@@ -35,13 +57,8 @@ def cp_krr(
         Weights tensor: n_in_features by feature_dim by cp-rank
         
     """
-
-    # Initialize model weights:
     _, d_dim = x.shape
-    random_state = np.random if seed is None else np.random.RandomState(seed)
-    weights = random_state.randn(d_dim, feature_dim, rank)
-    weights /= np.linalg.norm(weights, ord=2, axis=(1, 2), keepdims=True)
-
+    weights = init_weights(feature_dim, rank, d_dim, init_type, seed=seed)
     # Preprocessing: Calculate full features-parameters multiplication: 
     hadamard_feat_param = 1.0
     hadamard_gram = 1.0
@@ -49,7 +66,6 @@ def cp_krr(
         wk = weights[k]
         hadamard_feat_param *= feature_map(x[:, k]).dot(wk)
         hadamard_gram *= wk.T.dot(wk)
-
     # Training:
     for _ in range(n_epoch):
         for k in range(d_dim):
