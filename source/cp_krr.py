@@ -26,6 +26,43 @@ def init_weights(
         raise ValueError(f'Bad init_type = {init_type}. See docs.')
     return weights
 
+def get_hadamard_matrices(
+    x: np.array, 
+    weights: np.array, 
+    feature_map: FeatureMap
+) -> tuple[np.array, np.array]:
+    """ 
+    Preprocessing: Calculate full features-parameters multiplication
+    TODO
+    """
+    d_dim, _, _ = weights.shape
+    fw_hadamard, ww_hadamard = 1.0, 1.0
+    for k in range(d_dim):
+        wk = weights[k]
+        fw_hadamard *= feature_map(x[:, k]).dot(wk)
+        ww_hadamard *= wk.T.dot(wk)
+    return fw_hadamard, ww_hadamard
+
+def get_updated_als_factor(
+    fk_mtx: np.array, 
+    fw_hadamard: np.array,
+    ww_hadamard: np.array,
+    y: np.array,
+    reg_value: float,
+    m_order: int,
+) -> np.array:
+    """ 
+    Solve custom linear system of equations.
+    TODO
+    """
+    Fk = khatri_rao_row(fw_hadamard, fk_mtx) # Fortran Ordering
+    b = Fk.T.dot(y)
+    A = Fk.T.dot(Fk) 
+    if reg_value:
+        A += reg_value * np.kron(ww_hadamard, np.eye(m_order)) # Fortran Ordering
+    rank, _ = ww_hadamard.shape
+    return np.linalg.solve(A, b).reshape(m_order, rank, order='F') # Fortran Ordering
+
 def cp_krr(
     x: np.array, 
     y: np.array,
@@ -59,29 +96,19 @@ def cp_krr(
     """
     _, d_dim = x.shape
     weights = init_weights(m_order, rank, d_dim, init_type, seed=seed)
-    # Preprocessing: Calculate full features-parameters multiplication: 
-    hadamard_feat_param = 1.0
-    hadamard_gram = 1.0
-    for k in range(d_dim):
-        wk = weights[k]
-        hadamard_feat_param *= feature_map(x[:, k]).dot(wk)
-        hadamard_gram *= wk.T.dot(wk)
-    # Training:
+    fw_hadamard, ww_hadamard = get_hadamard_matrices(x, weights, feature_map)
     for _ in range(n_epoch):
         for k in range(d_dim):
+            wk, fk_mtx = weights[k], feature_map(x[:, k])
             # Preprocess:
-            wk = weights[k]
-            fk_mtx = feature_map(x[:, k])
-            hadamard_feat_param /= fk_mtx.dot(wk) # remove k-th factor
-            hadamard_gram /= wk.T.dot(wk) # remove k-th factor
+            fw_hadamard /= fk_mtx.dot(wk) # remove k-th factor
+            ww_hadamard /= wk.T.dot(wk) # remove k-th factor
             # Calculate A, b and solve linear system:
-            Fk = khatri_rao_row(fk_mtx, hadamard_feat_param)
-            b = Fk.T.dot(y)
-            A = Fk.T.dot(Fk) + reg_value * np.kron(hadamard_gram, np.eye(m_order))
-            wk = weights[k] = np.linalg.solve(A, b).reshape(m_order, rank)
+            wk = weights[k] = get_updated_als_factor(
+                fk_mtx, fw_hadamard, ww_hadamard, y, reg_value, m_order)
             # Postprocess:
-            hadamard_feat_param *= fk_mtx.dot(wk)
-            hadamard_gram *= wk.T.dot(wk)
+            fw_hadamard *= fk_mtx.dot(wk)
+            ww_hadamard *= wk.T.dot(wk)
     return weights
 
 def predict_score(x: np.array, weights: np.array, feature_map: FeatureMap) -> np.array:
