@@ -49,19 +49,18 @@ def get_updated_als_factor(
     ww_hadamard: np.array,
     y: np.array,
     reg_value: float,
-    m_order: int,
 ) -> np.array:
     """ 
     Solve custom linear system of equations.
     TODO
     """
+    (_, f_dim), (rank, _) = fk_mtx.shape, ww_hadamard.shape
     Fk = khatri_rao_row(fw_hadamard, fk_mtx) # Fortran Ordering
-    b = Fk.T.dot(y)
-    A = Fk.T.dot(Fk) 
+    b = Fk.T.conj().dot(y)
+    A = Fk.T.conj().dot(Fk) 
     if reg_value:
-        A += reg_value * np.kron(ww_hadamard, np.eye(m_order)) # Fortran Ordering
-    rank, _ = ww_hadamard.shape
-    return np.linalg.solve(A, b).reshape(m_order, rank, order='F') # Fortran Ordering
+        A += reg_value * np.kron(ww_hadamard, np.eye(f_dim)) # Fortran Ordering
+    return np.linalg.solve(A, b).reshape(f_dim, rank, order='F') # Fortran Ordering
 
 def cp_krr(
     x: np.array, 
@@ -105,14 +104,14 @@ def cp_krr(
             ww_hadamard /= wk.T.dot(wk) # remove k-th factor
             # Calculate A, b and solve linear system:
             wk = weights[k] = get_updated_als_factor(
-                fk_mtx, fw_hadamard, ww_hadamard, y, reg_value, m_order)
+                fk_mtx, fw_hadamard, ww_hadamard, y, reg_value)
             # Postprocess:
             fw_hadamard *= fk_mtx.dot(wk)
             ww_hadamard *= wk.T.dot(wk)
     return weights
 
 def predict_score(x: np.array, weights: np.array, feature_map: FeatureMap) -> np.array:
-    (n_samples, d_dim), rank = x.shape, weights.shape[2]
+    (n_samples, _), (d_dim, _, rank) = x.shape, weights.shape
     score = np.ones((n_samples, rank))
     for k in range(d_dim): 
         score *= feature_map(x[:, k]).dot(weights[k])
