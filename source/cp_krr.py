@@ -43,6 +43,14 @@ def get_hadamard_matrices(
         ww_hadamard *= wk.T.dot(wk)
     return fw_hadamard, ww_hadamard
 
+def prepare_system(
+    fk_mtx: np.array, 
+    fw_hadamard: np.array,
+    y: np.array,
+):
+    Fk = khatri_rao_row(fw_hadamard, fk_mtx) # Fortran Ordering
+    return Fk.T.conj().dot(Fk), Fk.T.conj().dot(y)
+
 def get_updated_als_factor(
     fk_mtx: np.array, 
     fw_hadamard: np.array,
@@ -55,9 +63,7 @@ def get_updated_als_factor(
     TODO
     """
     (_, f_dim), (rank, _) = fk_mtx.shape, ww_hadamard.shape
-    Fk = khatri_rao_row(fw_hadamard, fk_mtx) # Fortran Ordering
-    b = Fk.T.conj().dot(y)
-    A = Fk.T.conj().dot(Fk) 
+    A, b = prepare_system(fk_mtx, fw_hadamard, y)
     if reg_value:
         A += reg_value * np.kron(ww_hadamard, np.eye(f_dim)) # Fortran Ordering
     return np.linalg.solve(A, b).reshape(f_dim, rank, order='F') # Fortran Ordering
