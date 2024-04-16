@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Callable
 
 import numpy as np
 
@@ -56,7 +56,7 @@ def get_updated_als_factor(
     fw_hadamard: np.array,
     ww_hadamard: np.array,
     y: np.array,
-    reg_value: float,
+    alpha: float,
 ) -> np.array:
     """ 
     Solve custom linear system of equations.
@@ -64,8 +64,8 @@ def get_updated_als_factor(
     """
     (_, f_dim), (rank, _) = fk_mtx.shape, ww_hadamard.shape
     A, b = prepare_system(fk_mtx, fw_hadamard, y)
-    if reg_value:
-        A += reg_value * np.kron(ww_hadamard, np.eye(f_dim)) # Fortran Ordering
+    if alpha:
+        A += alpha * np.kron(ww_hadamard, np.eye(f_dim)) # Fortran Ordering
     return np.linalg.solve(A, b).reshape(f_dim, rank, order='F') # Fortran Ordering
 
 def cp_krr(
@@ -76,8 +76,9 @@ def cp_krr(
     rank: int,
     init_type: str,
     n_epoch: int,
-    reg_value: float,
-    seed: Optional[int] = None
+    alpha: float,
+    seed: Optional[int] = None,
+    callback: Optional[Callable] = None,
 ) -> np.array:
     """ 
     Train Tensor-Kernel Ridge Regression model (CP).
@@ -92,6 +93,10 @@ def cp_krr(
         Input data X: n_samples by n_in_features
     y : numpy.ndarray[:]
         Target values y: n_samples
+    ...
+    callback : Optional[Callable] = None
+        Function is called before training and after every epoch of training. 
+        callback should have the following layout: callback(y, y_pred, weights, **kwargs).
     
     Returns
     -------
@@ -102,6 +107,8 @@ def cp_krr(
     _, d_dim = x.shape
     weights = init_weights(m_order, rank, d_dim, init_type, seed=seed)
     fw_hadamard, ww_hadamard = get_hadamard_matrices(x, weights, feature_map)
+    if callback:
+        callback(y, predict_score(x, weights, feature_map), weights, alpha=alpha)
     for _ in range(n_epoch):
         for k in range(d_dim):
             wk, fk_mtx = weights[k], feature_map(x[:, k])
@@ -110,10 +117,12 @@ def cp_krr(
             ww_hadamard /= wk.T.dot(wk) # remove k-th factor
             # Calculate A, b and solve linear system:
             wk = weights[k] = get_updated_als_factor(
-                fk_mtx, fw_hadamard, ww_hadamard, y, reg_value)
+                fk_mtx, fw_hadamard, ww_hadamard, y, alpha)
             # Postprocess:
             fw_hadamard *= fk_mtx.dot(wk)
             ww_hadamard *= wk.T.dot(wk)
+        if callback:
+            callback(y, predict_score(x, weights, feature_map), weights, alpha=alpha)
     return weights
 
 def predict_score(x: np.array, weights: np.array, feature_map: FeatureMap) -> np.array:
