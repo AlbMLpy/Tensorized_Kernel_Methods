@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Callable
 from functools import partial
 
 from sklearn.metrics import r2_score
@@ -8,7 +8,7 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from ..features import pure_poli_features, gaussian_kernel_features
 from ..cp_krr import cp_krr, predict_score
 
-class CPKRR(BaseEstimator, RegressorMixin):
+class CPR(BaseEstimator, RegressorMixin):
     """ TODO """
     def __init__(
         self, 
@@ -20,7 +20,8 @@ class CPKRR(BaseEstimator, RegressorMixin):
         alpha: int = 1, 
         random_state: Optional[int] = None,
         lscale: float = 1,
-        domain_bound: float = 1
+        domain_bound: float = 1,
+        callback: Optional[Callable] = None,
     ):
         self.rank = rank
         self.feature_map = feature_map
@@ -31,6 +32,7 @@ class CPKRR(BaseEstimator, RegressorMixin):
         self.random_state = random_state
         self.lscale = lscale
         self.domain_bound = domain_bound
+        self.callback = callback
     
     def _prepare_feature_mapping(self):
         if self.feature_map == 'pure_poly':
@@ -51,7 +53,8 @@ class CPKRR(BaseEstimator, RegressorMixin):
         self._feature_mapping = self._prepare_feature_mapping()
         self.weights_ = cp_krr(
             X, y, self.m_order, self._feature_mapping, 
-            self.rank, self.init_type, self.n_epoch, self.alpha, self.random_state
+            self.rank, self.init_type, self.n_epoch, 
+            self.alpha, self.random_state, self.callback,
         )
         self.is_fitted_ = True
         return self
