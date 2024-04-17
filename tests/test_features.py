@@ -5,11 +5,15 @@ import numpy as np
 
 sys.path.append('./')
 
-from source.features import pure_poli_features, gaussian_kernel_features
+from source.features import (
+    pure_poli_features, 
+    gaussian_kernel_features,
+    q2_poli_features,
+    q2_fourier_features,
+)
 
 class TestFeatures(unittest.TestCase):
     def test_pure_poli_features(self):
-        # prepare the data:
         expected = np.array(
             [
                 [1, 0, 0, 0],
@@ -21,7 +25,6 @@ class TestFeatures(unittest.TestCase):
         self.assertTrue(np.allclose(actual, expected))
     
     def test_gaussian_kernel_features(self):
-        # prepare the data:
         expected = np.array(
             [
                 [ 0.18846226,  0.05777485],
@@ -34,5 +37,38 @@ class TestFeatures(unittest.TestCase):
             order=2,
             lscale=1,
             domain_bound=1,
+        )
+        self.assertTrue(np.allclose(actual, expected))
+
+    def test_q2_poli_features(self):
+        expected = np.array(
+            [
+                [1, 0],
+                [1, 1],
+                [1, 16],
+                [1, 81]
+            ]
+        )
+        actual = q2_poli_features(
+            np.arange(4), 
+            q=2,
+        )
+        self.assertTrue(np.allclose(actual, expected))
+
+    def test_q2_fourier_features(self):
+        expected = np.array(
+            [
+                [ 1.+0.0000000e+00j,  1.+0.0000000e+00j],
+                [-1.-1.2246468e-16j, -1.+1.2246468e-16j],
+                [ 1.+2.4492936e-16j,  1.-2.4492936e-16j],
+                [-1.-3.6739404e-16j, -1.+3.6739404e-16j],
+            ]
+        )
+        actual = q2_fourier_features(
+            np.arange(4), 
+            q=1,
+            m_order=3,
+            k_d=3,
+            lscale=1
         )
         self.assertTrue(np.allclose(actual, expected))
