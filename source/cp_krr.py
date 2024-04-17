@@ -68,6 +68,29 @@ def get_updated_als_factor(
         A += alpha * np.kron(ww_hadamard, np.eye(f_dim)) # Fortran Ordering
     return np.linalg.solve(A, b).reshape(f_dim, rank, order='F') # Fortran Ordering
 
+def update_weights(
+    x: np.array, 
+    y: np.array,
+    alpha: float,
+    weights: np.array,
+    feature_map: FeatureMap,
+    fw_hadamard: np.array,
+    ww_hadamard: np.array,
+) -> np.array:
+    d_dim, _, _ = weights.shape
+    for k in range(d_dim):
+        wk, fk_mtx = weights[k], feature_map(x[:, k])
+        # Preprocess:
+        fw_hadamard /= fk_mtx.dot(wk) # remove k-th factor
+        ww_hadamard /= wk.T.conj().dot(wk) # remove k-th factor
+        # Calculate A, b and solve linear system:
+        wk = weights[k] = get_updated_als_factor(
+            fk_mtx, fw_hadamard, ww_hadamard, y, alpha)
+        # Postprocess:
+        fw_hadamard *= fk_mtx.dot(wk)
+        ww_hadamard *= wk.T.conj().dot(wk)
+    return weights
+
 def cp_krr(
     x: np.array, 
     y: np.array,
@@ -107,22 +130,11 @@ def cp_krr(
     _, d_dim = x.shape
     weights = init_weights(m_order, rank, d_dim, init_type, seed=seed)
     fw_hadamard, ww_hadamard = get_hadamard_matrices(x, weights, feature_map)
-    if callback:
-        callback(y, predict_score(x, weights, feature_map), weights, alpha=alpha)
+    run_callback(x, y, alpha, weights, feature_map, callback)
     for _ in range(n_epoch):
-        for k in range(d_dim):
-            wk, fk_mtx = weights[k], feature_map(x[:, k])
-            # Preprocess:
-            fw_hadamard /= fk_mtx.dot(wk) # remove k-th factor
-            ww_hadamard /= wk.T.dot(wk) # remove k-th factor
-            # Calculate A, b and solve linear system:
-            wk = weights[k] = get_updated_als_factor(
-                fk_mtx, fw_hadamard, ww_hadamard, y, alpha)
-            # Postprocess:
-            fw_hadamard *= fk_mtx.dot(wk)
-            ww_hadamard *= wk.T.dot(wk)
-        if callback:
-            callback(y, predict_score(x, weights, feature_map), weights, alpha=alpha)
+        weights = update_weights(
+            x, y, alpha, weights, feature_map, fw_hadamard, ww_hadamard)
+        run_callback(x, y, alpha, weights, feature_map, callback)
     return weights
 
 def predict_score(x: np.array, weights: np.array, feature_map: FeatureMap) -> np.array:
@@ -131,3 +143,15 @@ def predict_score(x: np.array, weights: np.array, feature_map: FeatureMap) -> np
     for k in range(d_dim): 
         score *= feature_map(x[:, k]).dot(weights[k])
     return np.sum(score, 1)
+
+def run_callback(
+        x: np.array, 
+        y: np.array, 
+        alpha: float, 
+        weights: np.array,  
+        feature_map: FeatureMap, 
+        callback: Optional[Callable] = None,
+):
+    if callback:
+        y_pred = predict_score(x, weights, feature_map)
+        callback(y, y_pred, weights, alpha=alpha)
