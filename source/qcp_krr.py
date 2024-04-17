@@ -57,6 +57,29 @@ def get_ww_hadamard_mtx(
         ww_hadamard *= wk.T.dot(wk)
     return ww_hadamard.astype(dtype)
 
+def update_quantized_weights(
+    x: np.array, 
+    y: np.array,
+    alpha: float,
+    weights: np.array,
+    feature_map: FeatureMap,
+    fw_hadamard: np.array,
+    ww_hadamard: np.array,
+) -> np.array:
+    d_dim, k_d, _, _ = weights.shape
+    for k, q in product(range(d_dim), range(k_d)):
+        wk, fk_mtx = weights[k, q], feature_map(x[:, k], q)
+        # Preprocess:
+        fw_hadamard /= fk_mtx.dot(wk) # remove k-th factor
+        ww_hadamard /= wk.T.conj().dot(wk) # remove k-th factor
+        # Calculate A, b and solve linear system:
+        wk = weights[k, q] = get_updated_als_factor(
+            fk_mtx, fw_hadamard, ww_hadamard, y, alpha)
+        # Postprocess:
+        fw_hadamard *= fk_mtx.dot(wk)
+        ww_hadamard *= wk.T.conj().dot(wk)
+    return weights
+
 def qcp_krr(
     x: np.array, 
     y: np.array,
@@ -74,23 +97,11 @@ def qcp_krr(
     weights = init_quantized_weights(m_order, rank, d_dim, Q_BASE, init_type, seed, dtype)
     fw_hadamard = get_fw_hadamard_mtx(x, weights, feature_map, dtype)
     ww_hadamard = get_ww_hadamard_mtx(weights, dtype)
-    _, k_d, _, _ = weights.shape
-    if callback:
-        callback(y, predict_score(x, weights, feature_map), weights, alpha=alpha)
+    run_callback(x, y, alpha, weights, feature_map, callback)
     for _ in range(n_epoch):
-        for k, q in product(range(d_dim), range(k_d)):
-            wk, fk_mtx = weights[k, q], feature_map(x[:, k], q)
-            # Preprocess:
-            fw_hadamard /= fk_mtx.dot(wk) # remove k-th factor
-            ww_hadamard /= wk.T.conj().dot(wk) # remove k-th factor
-            # Calculate A, b and solve linear system:
-            wk = weights[k, q] = get_updated_als_factor(
-                fk_mtx, fw_hadamard, ww_hadamard, y, alpha)
-            # Postprocess:
-            fw_hadamard *= fk_mtx.dot(wk)
-            ww_hadamard *= wk.T.conj().dot(wk)
-        if callback:
-            callback(y, predict_score(x, weights, feature_map), weights, alpha=alpha)
+        weights = update_quantized_weights(
+            x, y, alpha, weights, feature_map, fw_hadamard, ww_hadamard)
+        run_callback(x, y, alpha, weights, feature_map, callback)
     return weights
 
 def predict_score(x: np.array, weights: np.array, feature_map: FeatureMap) -> np.array:
@@ -99,3 +110,15 @@ def predict_score(x: np.array, weights: np.array, feature_map: FeatureMap) -> np
     for k, q in product(range(d_dim), range(k_d)):
         score *= feature_map(x[:, k], q).dot(weights[k, q])
     return np.real(np.sum(score, 1))
+
+def run_callback(
+        x: np.array, 
+        y: np.array, 
+        alpha: float, 
+        weights: np.array,  
+        feature_map: FeatureMap, 
+        callback: Optional[Callable] = None,
+):
+    if callback:
+        y_pred = predict_score(x, weights, feature_map)
+        callback(y, y_pred, weights, alpha=alpha)
