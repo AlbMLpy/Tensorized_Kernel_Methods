@@ -21,7 +21,7 @@ class TestFeatures(unittest.TestCase):
                 [1, 2, 4, 8],
             ]
         )
-        actual = pure_poli_features(np.arange(3), 4)
+        actual = pure_poli_features(np.arange(3), None, 4)
         self.assertTrue(np.allclose(actual, expected))
     
     def test_gaussian_kernel_features(self):
@@ -33,7 +33,8 @@ class TestFeatures(unittest.TestCase):
             ]
         )
         actual = gaussian_kernel_features(
-            np.array([np.pi, 2*np.pi, 3*np.pi]), 
+            np.array([np.pi, 2*np.pi, 3*np.pi]),
+            None, 
             order=2,
             lscale=1,
             domain_bound=1,
