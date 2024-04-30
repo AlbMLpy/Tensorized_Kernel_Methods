@@ -26,29 +26,64 @@ def cpr(
     seed: Optional[int] = None,
     dtype: np.dtype = np.float64,
     callback: Optional[Callable] = None,
-) -> np.ndarray:
+) -> tuple[np.ndarray, int]:
     """ 
-    Train Tensor-Kernel Ridge Regression model (CP).
+    Train CPD Regression model using quantized or general format.
 
     References: 
-        "Large-Scale Learning with Fourier Features and Tensor Decompositions", Wesel, Batselier.
+        [1] "Large-Scale Learning with Fourier Features and Tensor Decompositions", Wesel, Batselier.
+        [2] "Quantized Fourier and Polynomial Features for more Expressive Tensor Network Models", Wesel, Batselier.
     
     Parameters
     ----------
+    x : numpy.ndarray
+        Input data x: (n_samples, n_input_features)
 
-    x : numpy.ndarray[:, :]
-        Input data X: n_samples by n_in_features
-    y : numpy.ndarray[:]
+    y : numpy.ndarray
         Target values y: n_samples
-    ...
+
+    quantized : bool
+        Use quantized=True to get quantized representation of weight tensor based on [2]. 
+        Use quantized=False to get more general representation of weight tensor based on [1]
+    
+    m_order : int
+        The number of new generated features per 1 data feature. 
+        In case of quantized version m_order must be a power of 2.
+    
+    feature_map: FeatureMap
+        Mapping from a data feature x_k to new features: f(x_k).
+
+    rank : int
+        The rank of the CP Decomposition based weights tensor.
+
+    init_type : str, optional, default='kj_vec'
+        The normalization strategy for the weights:
+            'k_mtx' - Normalize each matrix in the weights tensor.
+            'kj_vec' - Normalize each vector in the matrices of the weights tensor.
+
+    n_epoch : int
+        The number of global parameters updates.
+
+    alpha : float
+        L2 regularization hyper-parameter.
+        
+    seed : int, optional, default=None
+        A seed for the random number generator to ensure reproducibility.
+
+    dtype : np.dtype, default=np.float64
+        The data type of the array elements.
+    
     callback : Optional[Callable] = None
         Function is called before training and after every epoch of training. 
         callback should have the following layout: callback(y, y_pred, weights, **kwargs).
     
     Returns
     -------
-    output : numpy.ndarray[:, :, :]
-        Weights tensor: n_in_features by m_order by cp-rank
+    weights : numpy.ndarray
+        3D array containing the trained CPD weights.
+
+    k_d : int
+        Degree in the equation: m_order = q_base^(k_d).
         
     """
     q_base = Q_BASE if quantized else None
@@ -61,7 +96,3 @@ def cpr(
             x, y, alpha, k_d, weights, feature_map, fw_hadamard, ww_hadamard)
         run_callback(x, y, alpha, k_d, weights, feature_map, callback)
     return weights, k_d
-
-### See Sandbox!!!
-def weights_to_quantized_4d_tensor(weights: np.ndarray) -> np.ndarray:
-    pass
