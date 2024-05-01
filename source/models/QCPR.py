@@ -33,6 +33,7 @@ class QCPR(BaseEstimator, RegressorMixin):
         self.random_state = random_state
         self.lscale = lscale
         self.callback = callback
+        self._dtype = None
         self._quantized = True
     
     def _prepare_feature_mapping(self):
