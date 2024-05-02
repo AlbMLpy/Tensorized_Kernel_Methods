@@ -158,4 +158,5 @@ cython_debug/
 # General
 data/
 temp/
+artifacts/
 
