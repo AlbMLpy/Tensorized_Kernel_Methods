@@ -11,13 +11,13 @@ class CPR(QCPR):
     def __init__(
         self, 
         rank: int = 1, 
-        feature_map: str = 'pure_poly', 
+        feature_map: str = 'ppf', 
         m_order: int = 2,
         init_type: str = 'kj_vec',
         n_epoch: int = 1, 
-        alpha: int = 1, 
+        alpha: float = 1.0, 
         random_state: Optional[int] = None,
-        lscale: float = 1,
+        lscale: float = 1.0,
         domain_bound: float = 1,
         callback: Optional[Callable] = None,
     ):
@@ -30,9 +30,9 @@ class CPR(QCPR):
         self._dtype = np.float64
 
     def _prepare_feature_mapping(self):
-        if self.feature_map == 'pure_poly':
+        if self.feature_map == 'ppf':
             return partial(pure_poli_features, order=self.m_order)
-        elif self.feature_map == 'rbf_fourier':
+        elif self.feature_map == 'rbf_f':
             return partial(
                 gaussian_kernel_features, 
                 order=self.m_order, 
