@@ -6,7 +6,7 @@ from sklearn.metrics import r2_score
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
-from ..features import q2_poli_features, q2_fourier_features
+from ..features import ppf_q2, ff_q2
 from ..cpr import cpr
 from ..model_functionality import predict_score
 
@@ -15,13 +15,13 @@ class QCPR(BaseEstimator, RegressorMixin):
     def __init__(
         self, 
         rank: int = 1, 
-        feature_map: str = 'pure_poly', 
+        feature_map: str = 'ppf', 
         m_order: int = 2,
         init_type: str = 'kj_vec',
         n_epoch: int = 1, 
-        alpha: int = 1, 
+        alpha: float = 1.0, 
         random_state: Optional[int] = None,
-        lscale: float = 1,
+        lscale: float = 1.0,
         callback: Optional[Callable] = None,
     ):
         self.rank = rank
@@ -37,13 +37,13 @@ class QCPR(BaseEstimator, RegressorMixin):
         self._quantized = True
     
     def _prepare_feature_mapping(self):
-        if self.feature_map == 'pure_poly':
+        if self.feature_map == 'ppf':
             self._dtype = np.float64
-            return q2_poli_features
-        elif self.feature_map == 'rbf_fourier':
+            return ppf_q2
+        elif self.feature_map == 'ff':
             self._dtype = np.complex128
             return partial(
-                q2_fourier_features, 
+                ff_q2, 
                 m_order=self.m_order, 
                 k_d=int(np.log2(self.m_order)), 
                 lscale=self.lscale,
