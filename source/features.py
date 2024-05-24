@@ -4,8 +4,8 @@ from collections import namedtuple
 import numpy as np
 
 FeatureMap = Callable[..., np.ndarray]
-PPQ2Feature = namedtuple('PPQ2Feature', 'name', defaults=['pure_poly'])
-RFQ2Feature = namedtuple('RFQ2Feature', 'lscale, name', defaults=[1, 'rbf_fourier'])
+PPQ2Feature = namedtuple('PPQ2Feature', 'name', defaults=['ppf'])
+FQ2Feature = namedtuple('FQ2Feature', 'p_scale, name', defaults=[1, 'ff'])
 
 def pure_poli_features(
     x: np.ndarray, 
@@ -38,7 +38,7 @@ def gaussian_kernel_features(
     sd = np.sqrt(2 * np.pi) * lscale * np.exp(-np.power(lscale * w_scaled, 2) / 2)
     return np.sqrt(sd / domain_bound) * np.sin(np.outer(x, w_scaled)) 
 
-def q2_poli_features(x: np.ndarray, q: int) -> np.ndarray:
+def ppf_q2(x: np.ndarray, q: int) -> np.ndarray:
     """ 
     Quantized pure polinomial features matrix for x. 
     
@@ -47,7 +47,7 @@ def q2_poli_features(x: np.ndarray, q: int) -> np.ndarray:
     """
     return np.power(x[:, None], [0, 2**q])
 
-def q2_fourier_features(
+def ff_q2(
     x: np.ndarray, 
     q: int, 
     m_order: int, 
