@@ -14,7 +14,7 @@ from source.model_functionality import (
     weights3d_to_quantized4d,
     weights4d_quantized_to_3d,
 )
-from source.features import pure_poli_features, q2_poli_features
+from source.features import pure_poli_features, ppf_q2
 
 
 class TestModelFunctionality(unittest.TestCase):
@@ -84,7 +84,7 @@ class TestModelFunctionality(unittest.TestCase):
                 [[0, 1], [1, 0]]
             ]
         )
-        feature_map = q2_poli_features
+        feature_map = ppf_q2
 
         expected = np.array(
             [

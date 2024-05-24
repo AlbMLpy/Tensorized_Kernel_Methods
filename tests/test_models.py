@@ -10,8 +10,9 @@ sys.path.append('./')
 from source.models.CPR import CPR
 from source.models.QCPR import QCPR
 from source.models.QCPRf import QCPRf
-from source.features import PPQ2Feature, RFQ2Feature
-from source.general_functions import prepare_callback
+from source.features import PPQ2Feature, FQ2Feature
+from source.general_functions import prepare_callback_mse_wl2
+from source.loss import mse_l2w_l2l_loss
 
 
 class TestModels(unittest.TestCase):
@@ -22,7 +23,7 @@ class TestModels(unittest.TestCase):
         self.y = (y - y.mean()) / y.std()
 
     def test_cpr_loss(self):
-        callback_function = prepare_callback()
+        callback_function = prepare_callback_mse_wl2()
         model_params = dict(
             rank=8,
             m_order=4,
@@ -39,7 +40,7 @@ class TestModels(unittest.TestCase):
         self.assertTrue(np.allclose(actual, expected))
 
     def test_qcpr_loss(self):
-        callback_function = prepare_callback()
+        callback_function = prepare_callback_mse_wl2()
         model_params = dict(
             rank=8,
             m_order=4,
@@ -55,17 +56,35 @@ class TestModels(unittest.TestCase):
         actual = callback_function.data
         self.assertTrue(np.allclose(actual, expected))
 
-    
     def test_qcprf_loss(self):
+        def prepare_callback():
+            def callback_function(
+                y: np.ndarray, 
+                y_pred: np.ndarray, 
+                k_d: int,
+                weights: np.ndarray,
+                lambdas: np.ndarray,
+                feature_maps_list, 
+                alpha,
+                beta, 
+                *args,
+                **kwargs,
+            ):
+                if not hasattr(callback_function, 'data'):
+                    callback_function.data = []   
+                value = mse_l2w_l2l_loss(y, y_pred, weights, lambdas, alpha, beta)
+                callback_function.data.append(value)
+            return callback_function
+        
         callback_function = prepare_callback()
         model_params = dict(
             rank=8,
             m_order=4,
             fmaps_list=[
                 PPQ2Feature(), 
-                RFQ2Feature(lscale=1), 
+                FQ2Feature(p_scale=1), 
             ],
-            n_epoch=20,
+            n_epoch=5,
             alpha=0.001,
             beta=0.001,
             random_state=0,

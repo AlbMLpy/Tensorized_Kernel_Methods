@@ -8,8 +8,8 @@ sys.path.append('./')
 from source.features import (
     pure_poli_features, 
     gaussian_kernel_features,
-    q2_poli_features,
-    q2_fourier_features,
+    ppf_q2,
+    ff_q2,
 )
 
 class TestFeatures(unittest.TestCase):
@@ -50,7 +50,7 @@ class TestFeatures(unittest.TestCase):
                 [1, 81]
             ]
         )
-        actual = q2_poli_features(
+        actual = ppf_q2(
             np.arange(4), 
             q=2,
         )
@@ -65,11 +65,11 @@ class TestFeatures(unittest.TestCase):
                 [-1.-3.6739404e-16j, -1.+3.6739404e-16j],
             ]
         )
-        actual = q2_fourier_features(
+        actual = ff_q2(
             np.arange(4), 
             q=1,
             m_order=3,
             k_d=3,
-            lscale=1
+            p_scale=1
         )
         self.assertTrue(np.allclose(actual, expected))
