@@ -6,6 +6,9 @@ import numpy as np
 FeatureMap = Callable[..., np.ndarray]
 PPQ2Feature = namedtuple('PPQ2Feature', 'name', defaults=['ppf'])
 FQ2Feature = namedtuple('FQ2Feature', 'p_scale, name', defaults=[1, 'ff'])
+PPFeature = namedtuple('PPFeature', 'name', defaults=['ppf'])
+FFeature = namedtuple('FFeature', 'p_scale, name', defaults=[1, 'ff'])
+
 
 def pure_poli_features(
     x: np.ndarray, 
@@ -19,6 +22,17 @@ def pure_poli_features(
         Expressive Tensor Network Models", Frederiek Wesel, Kim Batselier, (Definition 3.1).
     """
     return np.power(x[:, None], np.arange(order))
+
+def ppf_q2(x: np.ndarray, q: int) -> np.ndarray:
+    """ 
+    Quantized pure polinomial features matrix for x. 
+    
+    References: "Quantized Fourier and Polynomial Features for more 
+        Expressive Tensor Network Models", Frederiek Wesel, Kim Batselier, (Definition 3.4).
+
+    NOTE: q should start with 0 -> [log2(m_order) - 1] including
+    """
+    return np.power(x[:, None], [0, 2**q])
 
 def gaussian_kernel_features(
     x: np.ndarray,
@@ -38,14 +52,23 @@ def gaussian_kernel_features(
     sd = np.sqrt(2 * np.pi) * lscale * np.exp(-np.power(lscale * w_scaled, 2) / 2)
     return np.sqrt(sd / domain_bound) * np.sin(np.outer(x, w_scaled)) 
 
-def ppf_q2(x: np.ndarray, q: int) -> np.ndarray:
+def fourier_features(
+    x: np.ndarray,
+    q: int, # Dummy
+    m_order: int, 
+    p_scale: float = 1, 
+):
     """ 
-    Quantized pure polinomial features matrix for x. 
-    
-    References: "Quantized Fourier and Polynomial Features for more 
-        Expressive Tensor Network Models", Frederiek Wesel, Kim Batselier, (Definition 3.4).
+    Fourier Features matrix for x. 
+
+    References: 
+        - "Learning multidimensional Fourier series with tensor trains",
+            Sander Wahls, Visa Koivunen, H Vincent Poor, Michel Verhaegen.
+        - "Quantized Fourier and Polynomial Features for more 
+            Expressive Tensor Network Models", Frederiek Wesel, Kim Batselier, (Definition 3.2).
     """
-    return np.power(x[:, None], [0, 2**q])
+    w = np.arange(-m_order / 2, m_order / 2)
+    return np.exp(1j * 2 * np.pi * np.outer(x, w) / p_scale)
 
 def ff_q2(
     x: np.ndarray, 
@@ -55,17 +78,19 @@ def ff_q2(
     p_scale: float = 1
 ) -> np.ndarray:
     """ 
-    Fourier Features matrix for x. 
+    Quantized Fourier Features matrix for x. 
 
     References: 
         - "Learning multidimensional Fourier series with tensor trains",
             Sander Wahls, Visa Koivunen, H Vincent Poor, Michel Verhaegen.
         - "Quantized Fourier and Polynomial Features for more 
             Expressive Tensor Network Models", Frederiek Wesel, Kim Batselier, (Corollary 3.6).
+
+    NOTE: q should start with 0 -> [log2(m_order) - 1] including
     """
     return np.hstack(
         (
             np.exp(-1j * np.pi * x * m_order / (k_d * p_scale))[:, None], 
-            np.exp(1j * np.pi * (-x * m_order / k_d + x*(2**q)) / p_scale)[:, None]
+            np.exp(1j * np.pi * (-x * m_order / k_d + 2*x*(2**(q))) / p_scale)[:, None]
         ),
     )
