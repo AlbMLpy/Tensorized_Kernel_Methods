@@ -3,12 +3,11 @@ from collections import namedtuple
 
 import numpy as np
 
-FeatureMap = Callable[..., np.ndarray]
-PPQ2Feature = namedtuple('PPQ2Feature', 'name', defaults=['ppf'])
-FQ2Feature = namedtuple('FQ2Feature', 'p_scale, name', defaults=[1, 'ff'])
+Feature = tuple
 PPFeature = namedtuple('PPFeature', 'name', defaults=['ppf'])
 FFeature = namedtuple('FFeature', 'p_scale, name', defaults=[1, 'ff'])
-
+RBFFeature = namedtuple('RBFFeature', 'l_scale, name', defaults=[1, 'rbff'])
+FeatureMap = Callable[..., np.ndarray]
 
 def pure_poli_features(
     x: np.ndarray, 
