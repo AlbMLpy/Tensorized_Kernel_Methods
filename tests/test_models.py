@@ -10,7 +10,7 @@ sys.path.append('./')
 from source.models.CPR import CPR
 from source.models.QCPR import QCPR
 from source.models.QCPRf import QCPRf
-from source.features import PPQ2Feature, FQ2Feature
+from source.features import PPFeature, FFeature
 from source.general_functions import prepare_callback_mse_wl2
 from source.loss import mse_l2w_l2l_loss
 
@@ -81,8 +81,8 @@ class TestModels(unittest.TestCase):
             rank=8,
             m_order=4,
             fmaps_list=[
-                PPQ2Feature(), 
-                FQ2Feature(p_scale=1), 
+                PPFeature(), 
+                FFeature(p_scale=1), 
             ],
             n_epoch=5,
             alpha=0.001,
