@@ -6,7 +6,7 @@ from sklearn.metrics import r2_score
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
-from ..features import ppf_q2, ff_q2
+from ..features import Feature, PPFeature, ppf_q2, ff_q2
 from ..cpr import cpr
 from ..model_functionality import predict_score
 
@@ -15,13 +15,12 @@ class QCPR(BaseEstimator, RegressorMixin):
     def __init__(
         self, 
         rank: int = 1, 
-        feature_map: str = 'ppf', 
+        feature_map: Feature = PPFeature(), 
         m_order: int = 2,
         init_type: str = 'kj_vec',
         n_epoch: int = 1, 
         alpha: float = 1.0, 
         random_state: Optional[int] = None,
-        lscale: float = 1.0,
         callback: Optional[Callable] = None,
     ):
         self.rank = rank
@@ -31,22 +30,21 @@ class QCPR(BaseEstimator, RegressorMixin):
         self.n_epoch = n_epoch
         self.alpha = alpha
         self.random_state = random_state
-        self.lscale = lscale
         self.callback = callback
         self._dtype = None
         self._quantized = True
     
     def _prepare_feature_mapping(self):
-        if self.feature_map == 'ppf':
+        if self.feature_map.name == 'ppf':
             self._dtype = np.float64
             return ppf_q2
-        elif self.feature_map == 'ff':
+        elif self.feature_map.name == 'ff':
             self._dtype = np.complex128
             return partial(
                 ff_q2, 
                 m_order=self.m_order, 
                 k_d=int(np.log2(self.m_order)), 
-                lscale=self.lscale,
+                p_scale=self.feature_map.p_scale,
             )
         else:
             raise ValueError(f'Bad feature_map = "{self.feature_map}". See docs.')
