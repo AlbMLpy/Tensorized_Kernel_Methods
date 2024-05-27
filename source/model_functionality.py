@@ -113,7 +113,7 @@ def get_fw_hadamard_mtx(
 
     fw_hadamard = 1.0
     for ind, wk in enumerate(weights):
-        k, q = divmod(ind, k_d)
+        k, q = divmod(ind, k_d) # q starts from zero -> for feature_map
         fw_hadamard *= feature_map(x[:, k], q).dot(wk)
     return fw_hadamard.astype(dtype)
 
@@ -205,7 +205,7 @@ def update_weights(
     """
     for ind in range(weights.shape[0]):
         # Preprocess:
-        k, q = divmod(ind, k_d)
+        k, q = divmod(ind, k_d) # q starts from zero -> for feature_map
         wk, fk_mtx = weights[ind], feature_map(x[:, k], q)
         fw_hadamard /= fk_mtx.dot(wk) 
         ww_hadamard /= wk.T.conj().dot(wk) 
@@ -228,7 +228,7 @@ def predict_score(
     n_samples, rank = x.shape[0], weights.shape[-1]
     score = np.ones((n_samples, rank), dtype=weights.dtype)
     for ind, wk in enumerate(weights):
-        k, q = divmod(ind, k_d)
+        k, q = divmod(ind, k_d) # q starts from zero -> for feature_map
         score *= feature_map(x[:, k], q).dot(wk)
     return np.real(np.sum(score, 1))
 
