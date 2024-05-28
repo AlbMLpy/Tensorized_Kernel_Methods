@@ -140,7 +140,7 @@ def get_ww_hadamard_mtx(
 
     ww_hadamard = 1.0
     for wk in weights:
-        ww_hadamard *= wk.T.dot(wk)
+        ww_hadamard *= wk.T.conj().dot(wk)
     return ww_hadamard.astype(dtype)
 
 def _prepare_system(
