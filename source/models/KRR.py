@@ -8,7 +8,7 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 from ..features import FeatureMap, pure_poli_features, fourier_features
 
-class KRR(BaseEstimator, RegressorMixin):
+class KRR(RegressorMixin, BaseEstimator):
     def __init__(
         self, 
         feature_map: tuple, 

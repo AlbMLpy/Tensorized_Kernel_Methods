@@ -10,7 +10,7 @@ from ..features import Feature, PPFeature, ppf_q2, ff_q2
 from ..cpr import cpr
 from ..model_functionality import predict_score
 
-class QCPR(BaseEstimator, RegressorMixin):
+class QCPR(RegressorMixin, BaseEstimator):
     """ TODO """
     def __init__(
         self, 
