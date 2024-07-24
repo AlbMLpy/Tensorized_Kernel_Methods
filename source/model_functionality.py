@@ -239,14 +239,21 @@ def run_callback(
     k_d: int, 
     weights: np.ndarray,  
     feature_map: FeatureMap, 
+    xy_test: Optional[tuple] = None,
     callback: Optional[Callable] = None,
 ) -> None:
     """
     Calculates user-defined callback function.
     """
     if callback:
+        y_yp = None
+        if xy_test:
+            x_test, y_test = xy_test
+            y_pred_test = predict_score(x_test, k_d, weights, feature_map)
+            y_yp = y_test, y_pred_test
         y_pred = predict_score(x, k_d, weights, feature_map)
-        callback(y, y_pred, weights, alpha=alpha)
+        callback(y, y_pred, k_d, weights, feature_map, alpha, y_yp)
+
 
 def weights3d_to_quantized4d(weights: np.ndarray, k_d: int) -> np.ndarray:
     if k_d <= 1:
