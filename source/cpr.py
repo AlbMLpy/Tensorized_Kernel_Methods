@@ -25,6 +25,7 @@ def cpr(
     alpha: float,
     seed: Optional[int] = None,
     dtype: np.dtype = np.float64,
+    xy_test: Optional[tuple] = None,
     callback: Optional[Callable] = None,
 ) -> tuple[np.ndarray, int]:
     """ 
@@ -90,9 +91,9 @@ def cpr(
     weights, k_d = init_weights(m_order, rank, x.shape[-1], q_base, init_type, seed, dtype)
     fw_hadamard = get_fw_hadamard_mtx(x, k_d, weights, feature_map, dtype)
     ww_hadamard = get_ww_hadamard_mtx(weights, dtype)
-    run_callback(x, y, alpha, k_d, weights, feature_map, callback)
+    run_callback(x, y, alpha, k_d, weights, feature_map, xy_test, callback)
     for _ in range(n_epoch):
         weights = update_weights(
             x, y, alpha, k_d, weights, feature_map, fw_hadamard, ww_hadamard)
-        run_callback(x, y, alpha, k_d, weights, feature_map, callback)
+        run_callback(x, y, alpha, k_d, weights, feature_map, xy_test, callback)
     return weights, k_d
