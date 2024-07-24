@@ -1,27 +1,7 @@
 import time 
 from typing import Optional
 
-import numpy as np
 from memory_profiler import memory_usage
-
-from .loss import mse_l2_loss
-
-def prepare_callback_mse_wl2():
-    def callback_function(
-        y: np.ndarray, 
-        y_pred: np.ndarray, 
-        weights: np.ndarray,
-        *args,
-        **kwargs,
-    ):
-        if not hasattr(callback_function, 'data'):
-            callback_function.data = [] 
-        if 'alpha' not in kwargs:
-            raise ValueError("Alpha parameter for L2 regularization must be provided.")
-        
-        value = mse_l2_loss(y, y_pred, weights, kwargs['alpha'])
-        callback_function.data.append(value)
-    return callback_function
 
 def performance_decorator(enabled=True, buffer: Optional[dict] = None):
     def actual_decorator(func):
