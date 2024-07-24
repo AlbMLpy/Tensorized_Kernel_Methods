@@ -2,36 +2,48 @@ import numpy as np
 
 from .model_functionality import get_ww_hadamard_mtx
 
-def mse_loss(y: np.ndarray, y_pred: np.ndarray) -> float:
-    return 0.5 * np.linalg.norm(y - y_pred, ord=2)**2
+def mse_metric(y: np.ndarray, y_pred: np.ndarray) -> float:
+    return np.mean((y - y_pred)**2)
 
-def l2_reg_cp(weights: np.ndarray) -> float:
-    ww_hadamard = get_ww_hadamard_mtx(weights, weights.dtype)
-    return 0.5 * np.sum(np.real(ww_hadamard))
+def rmse_metric(y: np.ndarray, y_pred: np.ndarray) -> float:
+    return np.sqrt(mse_metric(y, y_pred))
 
-def l2_reg(x: np.ndarray) -> float:
-    return 0.5 * np.linalg.norm(x.flatten(), ord=2)**2
+def norm2(x: np.ndarray) -> float:
+    return np.linalg.norm(x.flatten(), ord=2)
 
-def l1_reg(x: np.ndarray) -> float:
+def normF_cpd(x: np.ndarray) -> float:
+    ww_hadamard = get_ww_hadamard_mtx(x, x.dtype)
+    return np.sqrt(np.sum(np.real(ww_hadamard)))
+
+def norm1(x: np.ndarray) -> float:
     return np.linalg.norm(x.flatten(), ord=1)
 
-def mse_l2_loss(
+def ls_loss(y: np.ndarray, y_pred: np.ndarray) -> float:
+    return 0.5 * norm2(y - y_pred)**2
+
+def l2_reg_cp(weights: np.ndarray) -> float:
+    return 0.5 * normF_cpd(weights)**2
+
+def l2_reg(x: np.ndarray) -> float:
+    return 0.5 * norm2(x)**2
+
+def ls_l2_loss(
     y: np.ndarray, 
     y_pred: np.ndarray, 
     weights: np.ndarray, 
     alpha: float,
 ) -> float:
-    return mse_loss(y, y_pred) + alpha * l2_reg_cp(weights)
+    return ls_loss(y, y_pred) + alpha * l2_reg_cp(weights)
 
-def mse_l1(
+def ls_l1(
     y: np.ndarray, 
     y_pred: np.ndarray, 
     weights: np.ndarray, 
     alpha: float,
 ) -> float:
-    return mse_loss(y, y_pred) + alpha * l1_reg(weights)
+    return ls_loss(y, y_pred) + alpha * norm1(weights)
 
-def mse_l2w_l2l_loss(
+def ls_l2w_l2l_loss(
     y: np.ndarray, 
     y_pred: np.ndarray, 
     weights: np.ndarray, 
@@ -39,9 +51,9 @@ def mse_l2w_l2l_loss(
     alpha: float,
     beta: float,
 ) -> float:
-    return mse_loss(y, y_pred) + alpha * l2_reg_cp(weights) + beta * l2_reg(lambdas)
+    return ls_loss(y, y_pred) + alpha * l2_reg_cp(weights) + 0.5 * beta * norm2(lambdas)**2
 
-def mse_l2w_l1l_loss(
+def ls_l2w_l1l_loss(
     y: np.ndarray, 
     y_pred: np.ndarray, 
     weights: np.ndarray, 
@@ -49,4 +61,4 @@ def mse_l2w_l1l_loss(
     alpha: float,
     beta: float,
 ) -> float:
-    return mse_loss(y, y_pred) + alpha * l2_reg_cp(weights) + beta * l1_reg(lambdas)
+    return ls_loss(y, y_pred) + alpha * l2_reg_cp(weights) + beta * norm1(lambdas)
