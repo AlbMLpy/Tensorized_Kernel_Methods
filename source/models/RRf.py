@@ -22,6 +22,7 @@ class RRf(RegressorMixin, BaseEstimator): # Ridge Regression with features learn
         init_equal_lambda: bool = False,
         positive_lambda: bool = False,
         callback: Optional[Callable] = None,
+        update_order_t: str = 'wl' #'lw'; _t means temporary parameter used for experiments
     ): 
         self.fmaps_list = fmaps_list
         self.m_order = m_order
@@ -34,6 +35,7 @@ class RRf(RegressorMixin, BaseEstimator): # Ridge Regression with features learn
         self.init_equal_lambda = init_equal_lambda
         self.positive_lambda = positive_lambda
         self.callback = callback
+        self.update_order_t = update_order_t
         self._dtype = None
     
     def _prepare_feature_mappings(self):
@@ -50,14 +52,14 @@ class RRf(RegressorMixin, BaseEstimator): # Ridge Regression with features learn
         self._dtype = np.float64 if self._dtype is None else self._dtype
         return mappings
 
-    def fit(self, X, y):
+    def fit(self, X, y, xy_test: Optional[tuple] = None):
         X, y = check_X_y(X, y)
         self._feature_maps_list = self._prepare_feature_mappings()
         self.weights_, self.lambdas_ = reg_f(
             X, y, self.m_order, self._feature_maps_list, 
             self.n_epoch, self.alpha, self.beta, self.lambda_reg_type, 
             self.n_steps_l1, self.random_state, self.init_equal_lambda, 
-            self.positive_lambda, self._dtype, self.callback)
+            self.positive_lambda, self._dtype, xy_test, self.callback, self.update_order_t)
         self.is_fitted_ = True
         return self
     
@@ -66,6 +68,46 @@ class RRf(RegressorMixin, BaseEstimator): # Ridge Regression with features learn
         check_is_fitted(self, 'is_fitted_')
         return predict_score(
             X, self.weights_, self.lambdas_, self._feature_maps_list)
+    
+    def score(self, X, y):
+        return r2_score(y, self.predict(X))
+    
+class GRR(RegressorMixin, BaseEstimator): # Generalized Ridge Regression with a high-dim. feature map
+    def __init__(
+        self,  
+        fmap: Feature = PPFeature(),
+        m_order: int = 2,
+        alpha: float = 1.0, 
+        random_state: Optional[int] = None,
+    ): 
+        self.fmap = fmap
+        self.m_order = m_order
+        self.alpha = alpha
+        self.random_state = random_state
+        self._dtype = None
+
+    def _prepare_feature(self):
+        if self.fmap.name == 'ppf':
+            self._dtype = np.float64
+            return partial(pure_poli_features, q=None, order=self.m_order)
+        elif self.fmap.name == 'ff':
+            self._dtype = np.complex128
+            return partial(fourier_features, q=None, m_order=self.m_order, p_scale=self.fmap.p_scale)
+
+    def fit(self, X, y):
+        X, y = check_X_y(X, y)
+        self._fmap = feature_map = self._prepare_feature()
+        ft_mtx = feature_map(X[:, 0])
+        for q in range(1, X.shape[1]):
+            ft_mtx = khatri_rao_row(feature_map(X[:, q]), ft_mtx)
+        self.weights_ = ls_solution(ft_mtx, y, self.alpha)
+        self.is_fitted_ = True
+        return self
+    
+    def predict(self, X):
+        X = check_array(X)
+        check_is_fitted(self, 'is_fitted_')
+        return _predict_score(X, self.weights_, self._fmap)
     
     def score(self, X, y):
         return r2_score(y, self.predict(X))
@@ -104,10 +146,11 @@ def update_feature_weights(
     elif reg_type == 'l1':
         lambdas = fista(f_mtx, y, lambdas, beta, n_steps=n_steps_l1)
     elif reg_type == 'fixed_norm':
-        lambdas = lsc_solution(f_mtx, y, beta)
+        lambdas = lsc_solution(f_mtx, y, alp=1) # fixed l2 norm = 1
     else:
-        raise NotImplementedError("Choose 'l1' or 'l2'")
-    if positive: # THIS IS PROBABLY NOT RIGHT!!!  
+        raise NotImplementedError("Choose 'l1' or 'l2' or 'fixed_norm'")
+    if positive: # THIS IS PROBABLY NOT RIGHT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        raise NotImplementedError('Positive lambdas are not implemented yet')
         lambdas = np.maximum(lambdas, 0.0)
     return lambdas
 
@@ -136,28 +179,32 @@ def reg_f(
     n_epoch: int,
     alpha: float,
     beta: float,
-    lambda_reg_type: str = 'l2',
-    n_steps_l1: int = 100,
+    l_reg: str = 'l2',
+    ns_l1: int = 100,
     seed: Optional[int] = None,
-    init_equal_lambda: bool = False,
-    positive_lambda: bool = False,
+    l_init_eq: bool = False,
+    l_pos: bool = False,
     dtype: np.dtype = np.float64,
+    xy_test: Optional[tuple] = None,
     callback: Optional[Callable] = None,
+    upd_t: str = 'wl',
 ) -> tuple[np.ndarray, np.ndarray, int]:
-    """ TODO """
-    # Prepare modeling:
-    n_fmaps, (_, d_dim) = len(fmaps_list), x.shape
-    weights = init_weights(m_order**d_dim, seed, dtype=dtype)
-    lambdas = init_weights(n_fmaps, seed, init_equal_lambda, np.float64)
-    run_callback(x, y, weights, lambdas, fmaps_list, alpha, beta, callback)
+    rc = partial(run_callback, x=x, y=y, feature_maps_list=fmaps_list, 
+        alpha=alpha, beta=beta, xy_test=xy_test, callback=callback)
+    weights = init_weights(m_order**x.shape[1], seed, dtype=dtype)
+    lambdas = init_weights(len(fmaps_list), seed, l_init_eq, np.float64)
+    rc(weights=weights, lambdas=lambdas)
     for _ in range(n_epoch):
-        ### TRAIN W ###
-        weights = update_model_weights(x, y, alpha, weights, lambdas, fmaps_list)
-        run_callback(x, y, weights, lambdas, fmaps_list, alpha, beta, callback)
-        ### TRAIN L ###
-        lambdas = update_feature_weights(x, y, beta, weights, lambdas, 
-            fmaps_list, lambda_reg_type, n_steps_l1, positive_lambda)
-        run_callback(x, y, weights, lambdas, fmaps_list, alpha, beta, callback)
+        if upd_t == 'wl':
+            weights = update_model_weights(x, y, alpha, weights, lambdas, fmaps_list)
+            rc(weights=weights, lambdas=lambdas)
+            lambdas = update_feature_weights(x, y, beta, weights, lambdas, fmaps_list, l_reg, ns_l1, l_pos)
+            rc(weights=weights, lambdas=lambdas)
+        else:
+            lambdas = update_feature_weights(x, y, beta, weights, lambdas, fmaps_list, l_reg, ns_l1, l_pos)
+            rc(weights=weights, lambdas=lambdas)
+            weights = update_model_weights(x, y, alpha, weights, lambdas, fmaps_list)
+            rc(weights=weights, lambdas=lambdas)
         if not lambdas.any(): # if all lambda values are zeros - stop optimization
             break
     return weights, lambdas
@@ -192,9 +239,15 @@ def run_callback(
         feature_maps_list, 
         alpha,
         beta, 
+        xy_test: Optional[tuple] = None,
         callback: Optional[Callable] = None,
 ):
     if callback:
+        y_yp = None
+        if xy_test:
+            x_test, y_test = xy_test
+            y_pred_test = predict_score(x_test, weights, lambdas, feature_maps_list)
+            y_yp = y_test, y_pred_test
         y_pred = predict_score(x, weights, lambdas, feature_maps_list)
-        callback(y, y_pred, weights, lambdas, feature_maps_list, alpha, beta)
+        callback(y, y_pred, weights, lambdas, feature_maps_list, alpha, beta, y_yp)
     

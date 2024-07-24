@@ -26,6 +26,7 @@ class QCPRf(RegressorMixin, BaseEstimator):
         init_equal_lambda: bool = False,
         positive_lambda: bool = False,
         callback: Optional[Callable] = None,
+        update_order_t: str = 'wl' #'lw'
     ):
         _check_input_params(m_order)  
         self.rank = rank
@@ -41,6 +42,7 @@ class QCPRf(RegressorMixin, BaseEstimator):
         self.init_equal_lambda = init_equal_lambda
         self.positive_lambda = positive_lambda
         self.callback = callback
+        self.update_order_t = update_order_t
         self._dtype = None
     
     def _prepare_feature_mappings(self):
@@ -63,7 +65,7 @@ class QCPRf(RegressorMixin, BaseEstimator):
         self._dtype = np.float64 if self._dtype is None else self._dtype
         return mappings
 
-    def fit(self, X, y):
+    def fit(self, X, y, xy_test: Optional[tuple] = None):
         """ TODO """
         X, y = check_X_y(X, y)
         self._feature_maps_list = self._prepare_feature_mappings()
@@ -71,7 +73,8 @@ class QCPRf(RegressorMixin, BaseEstimator):
             X, y, self.m_order, self._feature_maps_list, 
             self.rank, self.init_type, self.n_epoch, self.alpha, 
             self.beta, self.lambda_reg_type, self.n_steps_l1, self.random_state, 
-            self.init_equal_lambda, self.positive_lambda, self._dtype, self.callback,
+            self.init_equal_lambda, self.positive_lambda, self._dtype,
+            xy_test, self.callback, self.update_order_t
         )
         self.is_fitted_ = True
         return self

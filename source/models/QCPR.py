@@ -49,14 +49,14 @@ class QCPR(RegressorMixin, BaseEstimator):
         else:
             raise ValueError(f'Bad feature_map = "{self.feature_map}". See docs.')
 
-    def fit(self, X, y):
+    def fit(self, X, y, xy_test: Optional[tuple] = None):
         """ TODO """
         X, y = check_X_y(X, y)
         self._feature_mapping = self._prepare_feature_mapping()
         self.weights_, self.kd_ = cpr(
             X, y, self._quantized, self.m_order, self._feature_mapping, 
             self.rank, self.init_type, self.n_epoch,
-            self.alpha, self.random_state, self._dtype, self.callback
+            self.alpha, self.random_state, self._dtype, xy_test, self.callback
         )
         self.is_fitted_ = True
         return self
