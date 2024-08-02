@@ -18,7 +18,7 @@ class TestOptimization(unittest.TestCase):
 
     def test_fista(self):
         expected = self.x_gt
-        actual = fista(self.a_mtx, self.y, self.w0, beta=0, n_steps=100)
+        actual = fista(self.a_mtx, self.y, self.w0, beta=0, n_steps=100, atol=1e-5)
         self.assertTrue(np.allclose(actual, expected))
 
     def test_ls_solution(self):        
