@@ -252,8 +252,7 @@ def run_callback(
             y_pred_test = predict_score(x_test, k_d, weights, feature_map)
             y_yp = y_test, y_pred_test
         y_pred = predict_score(x, k_d, weights, feature_map)
-        callback(y, y_pred, k_d, weights, feature_map, alpha, y_yp)
-
+        callback(dict(y=y, y_pred=y_pred, weights=weights, alpha=alpha, y_yp=y_yp))
 
 def weights3d_to_quantized4d(weights: np.ndarray, k_d: int) -> np.ndarray:
     if k_d <= 1:
