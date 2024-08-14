@@ -124,9 +124,9 @@ def init_weights(
     dtype: np.dtype = np.float64,
 ) -> np.ndarray:
     random_state = np.random if seed is None else np.random.RandomState(seed) 
-    weights = np.full((n_values, 1), random_state.randn(1))[:, 0] if init_equal else random_state.randn(n_values) 
+    weights = np.ones(n_values) if init_equal else random_state.rand(n_values) 
     return weights.astype(dtype)
-
+ 
 def update_feature_weights( 
     x: np.ndarray, 
     y: np.ndarray,
@@ -147,11 +147,6 @@ def update_feature_weights(
         lambdas = fista(f_mtx, y, lambdas, beta, n_steps=n_steps_l1)
     elif reg_type == 'fixed_norm':
         lambdas = lsc_solution(f_mtx, y, alp=1) # fixed l2 norm = 1
-    else:
-        raise NotImplementedError("Choose 'l1' or 'l2' or 'fixed_norm'")
-    if positive: # THIS IS PROBABLY NOT RIGHT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        raise NotImplementedError('Positive lambdas are not implemented yet')
-        lambdas = np.maximum(lambdas, 0.0)
     return lambdas
 
 def update_model_weights( 
@@ -232,15 +227,8 @@ def predict_score(
     return score
 
 def run_callback(
-        x, 
-        y, 
-        weights, 
-        lambdas, 
-        feature_maps_list, 
-        alpha,
-        beta, 
-        xy_test: Optional[tuple] = None,
-        callback: Optional[Callable] = None,
+    x, y, weights, lambdas, feature_maps_list, alpha, beta,
+    xy_test: Optional[tuple] = None, callback: Optional[Callable] = None
 ):
     if callback:
         y_yp = None
@@ -249,5 +237,5 @@ def run_callback(
             y_pred_test = predict_score(x_test, weights, lambdas, feature_maps_list)
             y_yp = y_test, y_pred_test
         y_pred = predict_score(x, weights, lambdas, feature_maps_list)
-        callback(y, y_pred, weights, lambdas, feature_maps_list, alpha, beta, y_yp)
+        callback(dict(y=y, y_pred=y_pred, weights=weights, lambdas=lambdas, alpha=alpha, beta=beta, y_yp=y_yp))
     
