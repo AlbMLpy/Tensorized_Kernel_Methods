@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pandas as pd
 from sklearn.model_selection import (
     train_test_split,
@@ -26,9 +28,12 @@ def load_prepare_data(
     data_path: str, 
     test_size: float, 
     split_seed: int, 
-    verbose: bool = False
+    verbose: bool = False,
+    n_sample: Optional[int] = None,
 ) -> tuple[pd.DataFrame]:
     df = pd.read_csv(data_path, header=0)
+    if n_sample:
+        df = df.sample(n_sample, random_state=split_seed)
     if verbose: 
         print_df_stats(df)
     if 'class' in df.columns:
