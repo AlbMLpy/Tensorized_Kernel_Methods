@@ -26,57 +26,21 @@ def mse_l2wl_loss(
     return ls_loss(y, y_pred) + alpha * l2_reg(weights) + beta * l2_reg(lambdas)
 
 def prepare_callback_no_fl():
-    def callback_function(
-        y: np.ndarray, 
-        y_pred: np.ndarray, 
-        k_d: int,
-        weights: np.ndarray,
-        feature_map, 
-        alpha,
-        y_yp,
-        *args,
-        **kwargs,
-    ):
+    def callback_function(params: dict):
         if not hasattr(callback_function, 'data'):
             callback_function.data = [] 
-        value = ls_l2_loss(y, y_pred, weights, alpha)
+        value = ls_l2_loss(
+            params['y'], params['y_pred'], params['weights'], params['alpha'])
         callback_function.data.append(value)
     return callback_function
 
 def prepare_callback_fl(loss_funct: Callable):
-    def callback_function(
-        y: np.ndarray, 
-        y_pred: np.ndarray, 
-        k_d: int,
-        weights: np.ndarray,
-        lambdas: np.ndarray,
-        feature_maps_list, 
-        alpha,
-        beta, 
-        *args,
-        **kwargs,
-    ):
+    def callback_function(params: dict):
         if not hasattr(callback_function, 'data'):
             callback_function.data = []   
-        value = loss_funct(y, y_pred, weights, lambdas, alpha, beta)
-        callback_function.data.append(value)
-    return callback_function
-
-def prepare_callback_fl_1(loss_funct: Callable):
-    def callback_function(
-        y: np.ndarray, 
-        y_pred: np.ndarray, 
-        weights: np.ndarray,
-        lambdas: np.ndarray,
-        feature_maps_list, 
-        alpha,
-        beta, 
-        *args,
-        **kwargs,
-    ):
-        if not hasattr(callback_function, 'data'):
-            callback_function.data = []   
-        value = loss_funct(y, y_pred, weights, lambdas, alpha, beta)
+        value = loss_funct(
+            params['y'], params['y_pred'], params['weights'], 
+            params['lambdas'], params['alpha'], params['beta'])
         callback_function.data.append(value)
     return callback_function
 
@@ -123,7 +87,7 @@ class TestModels(unittest.TestCase):
         self.assertTrue(np.allclose(actual, expected))
 
     def test_rrf_loss(self):    
-        callback_function = prepare_callback_fl_1(mse_l2wl_loss)
+        callback_function = prepare_callback_fl(mse_l2wl_loss)
         model_params = dict(
             m_order=3, n_epoch=10, alpha=0.001, random_state=0,
             callback=callback_function, beta=1, lambda_reg_type='l2',
